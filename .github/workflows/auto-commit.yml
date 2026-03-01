@@ -1,56 +1,31 @@
-# 工作流的名称
-name: Auto Commit & Keep Green
+- name: One-time backfill 365 days
+  run: |
+    git config --global user.name "${{ github.actor }}"
+    git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
-on:
-  # 允许你手动在 Actions 页面点击按钮来触发这个工作流
-  workflow_dispatch:
-  
-  # 设置定时触发器
-  schedule:
-    # Cron 表达式，表示在每天的 UTC 时间 18:00 运行
-    # UTC 18:00 相当于北京时间 (UTC+8) 的凌晨 2:00
-    # 你可以根据自己的需要修改时间
-    - cron: '0 18 * * *'
+    # 如果已经执行过，则直接退出
+    if [ -f backfill_done.flag ]; then
+      echo "Backfill already completed. Skipping."
+      exit 0
+    fi
 
-# 定义一个任务
-jobs:
-  auto-commit:
-    # 指定任务运行的服务器环境
-    runs-on: ubuntu-latest
+    DAYS=365
 
-    # 为此任务中的所有步骤设置权限
-    # 这是必须的，因为我们需要权限来写入和提交代码
-    permissions:
-      contents: write
+    for ((i=1; i<=DAYS; i++))
+    do
+      TARGET_DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
 
-    # 定义该任务下的所有步骤
-    steps:
-      # 第1步：检出（下载）你的仓库代码到服务器上
-      # 这是必须的步骤，后续操作都基于这份代码
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      echo "Backfill $TARGET_DATE" > update.log
+      git add update.log
 
-      # 第2步：修改文件内容
-      # 这里我们用 Linux 的 date 命令将当前时间写入 update.log 文件
-      - name: Modify file
-        run: |
-          echo "Last updated: $(date '+%Y-%m-%d %H:%M:%S')" > update.log
+      GIT_AUTHOR_DATE="$TARGET_DATE" \
+      GIT_COMMITTER_DATE="$TARGET_DATE" \
+      git commit -m "chore: backfill $TARGET_DATE"
+    done
 
-      # 第3步：提交更改
-      - name: Commit changes
-        run: |
-          # 设置 Git 的用户信息，这样提交记录才会显示你的名字
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-          
-          # 将修改的文件添加到暂存区
-          git add .
-          
-          # 使用 git status 检查是否有变动，如果有才进行提交
-          # 这可以防止在没有文件变动时创建空的提交而导致工作流失败
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: Auto update log file 🤖"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+    # 创建完成标记
+    echo "done" > backfill_done.flag
+    git add backfill_done.flag
+    git commit -m "chore: mark backfill complete"
+
+    git push
