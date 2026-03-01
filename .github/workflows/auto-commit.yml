@@ -1,40 +1,56 @@
-name: Backfill Contributions
+# 工作流的名称
+name: Auto Commit & Keep Green
 
 on:
+  # 允许你手动在 Actions 页面点击按钮来触发这个工作流
   workflow_dispatch:
+  
+  # 设置定时触发器
+  schedule:
+    # Cron 表达式，表示在每天的 UTC 时间 18:00 运行
+    # UTC 18:00 相当于北京时间 (UTC+8) 的凌晨 2:00
+    # 你可以根据自己的需要修改时间
+    - cron: '0 18 * * *'
 
-permissions:
-  contents: write
-
+# 定义一个任务
 jobs:
-  backfill:
+  auto-commit:
+    # 指定任务运行的服务器环境
     runs-on: ubuntu-latest
 
+    # 为此任务中的所有步骤设置权限
+    # 这是必须的，因为我们需要权限来写入和提交代码
+    permissions:
+      contents: write
+
+    # 定义该任务下的所有步骤
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      # 第1步：检出（下载）你的仓库代码到服务器上
+      # 这是必须的步骤，后续操作都基于这份代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Backfill commits
+      # 第2步：修改文件内容
+      # 这里我们用 Linux 的 date 命令将当前时间写入 update.log 文件
+      - name: Modify file
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          echo "Last updated: $(date '+%Y-%m-%d %H:%M:%S')" > update.log
 
-          DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
-          git checkout "$DEFAULT_BRANCH"
-
-          DAYS=10000
-
-          for ((i=0; i<DAYS; i++))
-          do
-            DATE=$(date -u -d "$i days ago" +"%Y-%m-%dT12:00:00")
-
-            echo "Backfill $DATE" >> update.log
-            git add update.log
-
-            GIT_AUTHOR_DATE="$DATE" \
-            GIT_COMMITTER_DATE="$DATE" \
-            git commit -m "chore: backfill $DATE" --allow-empty
-          done
-
-          git push origin "$DEFAULT_BRANCH"
+      # 第3步：提交更改
+      - name: Commit changes
+        run: |
+          # 设置 Git 的用户信息，这样提交记录才会显示你的名字
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          
+          # 将修改的文件添加到暂存区
+          git add .
+          
+          # 使用 git status 检查是否有变动，如果有才进行提交
+          # 这可以防止在没有文件变动时创建空的提交而导致工作流失败
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: Auto update log file 🤖"
+            git push
+          else
+            echo "No changes to commit."
+          fi
