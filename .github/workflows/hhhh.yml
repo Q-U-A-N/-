@@ -20,8 +20,13 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
 
+          # 获取默认分支
           DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+
+          # 同步远端状态，避免 non-fast-forward
+          git fetch origin
           git checkout "$DEFAULT_BRANCH"
+          git reset --hard "origin/$DEFAULT_BRANCH"
 
           DAYS=4000
 
@@ -37,4 +42,5 @@ jobs:
             git commit -m "chore: backfill $DATE" --allow-empty
           done
 
-          git push origin "$DEFAULT_BRANCH"
+          # 使用安全强制推送
+          git push --force-with-lease origin "$DEFAULT_BRANCH"
