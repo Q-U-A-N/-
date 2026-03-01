@@ -1,31 +1,20 @@
-- name: One-time backfill 365 days
+- name: Backfill commits (keep green)
   run: |
     git config --global user.name "${{ github.actor }}"
     git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
-    # 如果已经执行过，则直接退出
-    if [ -f backfill_done.flag ]; then
-      echo "Backfill already completed. Skipping."
-      exit 0
-    fi
+    DAYS=30   # 想补多少天自己改
 
-    DAYS=365
-
-    for ((i=1; i<=DAYS; i++))
+    for ((i=0; i<$DAYS; i++))
     do
-      TARGET_DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
+      DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
 
-      echo "Backfill $TARGET_DATE" > update.log
+      echo "Backfill $DATE" >> update.log
       git add update.log
 
-      GIT_AUTHOR_DATE="$TARGET_DATE" \
-      GIT_COMMITTER_DATE="$TARGET_DATE" \
-      git commit -m "chore: backfill $TARGET_DATE"
+      GIT_AUTHOR_DATE="$DATE" \
+      GIT_COMMITTER_DATE="$DATE" \
+      git commit -m "chore: backfill $DATE" || true
     done
-
-    # 创建完成标记
-    echo "done" > backfill_done.flag
-    git add backfill_done.flag
-    git commit -m "chore: mark backfill complete"
 
     git push
