@@ -1,9 +1,7 @@
-name: Daily Backfill
+name: Backfill Contributions
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 18 * * *'  # UTC 时间
 
 permissions:
   contents: write
@@ -18,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Single daily commit (UTC)
+      - name: Backfill commits
         run: |
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
@@ -26,14 +24,18 @@ jobs:
           git checkout main
           git pull origin main
 
-          DATE=$(date -u '+%Y-%m-%d %H:%M:%S')
+          DAYS=30
 
-          echo "Last update (UTC): $DATE" > update.log
-          git add update.log
+          for ((i=0; i<$DAYS; i++))
+          do
+            DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
 
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: daily update $DATE"
-            git push origin main
-          else
-            echo "No changes."
-          fi
+            echo "Backfill $DATE" >> update.log
+            git add update.log
+
+            GIT_AUTHOR_DATE="$DATE" \
+            GIT_COMMITTER_DATE="$DATE" \
+            git commit -m "chore: backfill $DATE" || true
+          done
+
+          git push origin main
