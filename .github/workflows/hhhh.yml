@@ -1,40 +1,13 @@
-name: Backfill Contributions
+DAYS=4000
 
-on:
-workflow_dispatch:
+for ((i=0; i<DAYS; i++))
+do
+  DATE=$(date -u -d "$i days ago" +"%Y-%m-%dT12:00:00")
 
-permissions:
-contents: write
+  echo "Backfill $DATE" >> update.log
+  git add update.log
 
-jobs:
-backfill:
-runs-on: ubuntu-latest
-
-steps:  
-  - uses: actions/checkout@v4  
-    with:  
-      fetch-depth: 0  
-
-  - name: Backfill commits  
-    run: |  
-      git config user.name "${{ github.actor }}"  
-      git config user.email "${{ github.actor }}@users.noreply.github.com"  
-
-      DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')  
-      git checkout "$DEFAULT_BRANCH"  
-
-      DAYS=4000  
-
-      for ((i=0; i<DAYS; i++))  
-      do  
-        DATE=$(date -u -d "$i days ago" +"%Y-%m-%dT12:00:00")  
-
-        echo "Backfill $DATE" >> update.log  
-        git add update.log  
-
-        GIT_AUTHOR_DATE="$DATE" \  
-        GIT_COMMITTER_DATE="$DATE" \  
-        git commit -m "chore: backfill $DATE" --allow-empty  
-      done  
-
-      git push origin "$DEFAULT_BRANCH"
+  GIT_AUTHOR_DATE="$DATE" \
+  GIT_COMMITTER_DATE="$DATE" \
+  git commit -m "chore: backfill $DATE" --allow-empty
+done
