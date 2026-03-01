@@ -23,7 +23,7 @@ jobs:
           DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
           git checkout "$DEFAULT_BRANCH"
 
-          DAYS=1000
+          DAYS=10000
 
           for ((i=0; i<DAYS; i++))
           do
