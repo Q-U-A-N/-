@@ -1,25 +1,40 @@
-- name: Backfill commits
-  run: |
-    git config user.name "${{ github.actor }}"
-    git config user.email "${{ github.actor }}@users.noreply.github.com"
+name: Backfill Contributions
 
-    # 确保在默认分支
-    DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
-    git checkout $DEFAULT_BRANCH
-    git pull origin $DEFAULT_BRANCH
+on:
+workflow_dispatch:
 
-    DAYS=4000
+permissions:
+contents: write
 
-    for ((i=0; i<$DAYS; i++))
-    do
-      DATE=$(date -u -d "$i days ago" +"%Y-%m-%dT12:00:00")
+jobs:
+backfill:
+runs-on: ubuntu-latest
 
-      echo "Backfill $DATE" >> update.log
-      git add update.log
+steps:  
+  - uses: actions/checkout@v4  
+    with:  
+      fetch-depth: 0  
 
-      GIT_AUTHOR_DATE="$DATE" \
-      GIT_COMMITTER_DATE="$DATE" \
-      git commit -m "chore: backfill $DATE" --allow-empty
-    done
+  - name: Backfill commits  
+    run: |  
+      git config user.name "${{ github.actor }}"  
+      git config user.email "${{ github.actor }}@users.noreply.github.com"  
 
-    git push origin $DEFAULT_BRANCH
+      DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')  
+      git checkout "$DEFAULT_BRANCH"  
+
+      DAYS=4000  
+
+      for ((i=0; i<DAYS; i++))  
+      do  
+        DATE=$(date -u -d "$i days ago" +"%Y-%m-%dT12:00:00")  
+
+        echo "Backfill $DATE" >> update.log  
+        git add update.log  
+
+        GIT_AUTHOR_DATE="$DATE" \  
+        GIT_COMMITTER_DATE="$DATE" \  
+        git commit -m "chore: backfill $DATE" --allow-empty  
+      done  
+
+      git push origin "$DEFAULT_BRANCH"
