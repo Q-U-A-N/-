@@ -1,20 +1,35 @@
-- name: Backfill commits (keep green)
-  run: |
-    git config --global user.name "${{ github.actor }}"
-    git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+name: Backfill Contributions
 
-    DAYS=30   # 想补多少天自己改
+on:
+  workflow_dispatch:
 
-    for ((i=0; i<$DAYS; i++))
-    do
-      DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
+jobs:
+  auto-backfill:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-      echo "Backfill $DATE" >> update.log
-      git add update.log
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      GIT_AUTHOR_DATE="$DATE" \
-      GIT_COMMITTER_DATE="$DATE" \
-      git commit -m "chore: backfill $DATE" || true
-    done
+      - name: Backfill commits (keep green)
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
-    git push
+          DAYS=30
+
+          for ((i=0; i<$DAYS; i++))
+          do
+            DATE=$(date -d "$i days ago" '+%Y-%m-%d 12:00:00')
+
+            echo "Backfill $DATE" >> update.log
+            git add update.log
+
+            GIT_AUTHOR_DATE="$DATE" \
+            GIT_COMMITTER_DATE="$DATE" \
+            git commit -m "chore: backfill $DATE" || true
+          done
+
+          git push
