@@ -28,7 +28,7 @@ jobs:
           git checkout "$DEFAULT_BRANCH"
           git reset --hard "origin/$DEFAULT_BRANCH"
 
-          DAYS=4000
+          DAYS=2000
 
           for ((i=0; i<DAYS; i++))
           do
